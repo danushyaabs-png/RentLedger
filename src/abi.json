@@ -1,0 +1,2053 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "verifier_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "ClaimWindowNotOver",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DeductionTooHigh",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DepositAlreadySettled",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "EnforcedPause",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ExpectedPause",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "IdentityAlreadySet",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "expected",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "sent",
+        "type": "uint256"
+      }
+    ],
+    "name": "IncorrectPayment",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidDuration",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidFee",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidStatusChange",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidText",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidVerification",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "LandlordCannotRentOwnProperty",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "LeaseFullyPaid",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "LeaseNotActive",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "LeaseNotFound",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "LeaseStillActive",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotInDefault",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotLandlord",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotLeaseParty",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotTenant",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotVerified",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NothingToWithdraw",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableInvalidOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableUnauthorizedAccount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PropertyCurrentlyRented",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PropertyNotAvailable",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PropertyNotFound",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "RentOutstanding",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "RequestNotFound",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SamePerson",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "VerificationExpired",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isAvailable",
+        "type": "bool"
+      }
+    ],
+    "name": "AvailabilityChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "refundedToTenant",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "deductedForLandlord",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "DepositSettled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "IdentityRevoked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "identity",
+        "type": "bytes32"
+      }
+    ],
+    "name": "IdentityVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum RentalManagement.LeaseStatus",
+        "name": "status",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "closedBy",
+        "type": "address"
+      }
+    ],
+    "name": "LeaseClosed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "tenant",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "durationMonths",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "startDate",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "endDate",
+        "type": "uint64"
+      }
+    ],
+    "name": "LeaseCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "requestId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "tenant",
+        "type": "address"
+      }
+    ],
+    "name": "MaintenanceRequested",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "requestId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum RentalManagement.RequestStatus",
+        "name": "status",
+        "type": "uint8"
+      }
+    ],
+    "name": "MaintenanceStatusUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "Paused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "newFeeBps",
+        "type": "uint16"
+      }
+    ],
+    "name": "PlatformFeeUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "landlord",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "rentPerMonth",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "securityDeposit",
+        "type": "uint256"
+      }
+    ],
+    "name": "PropertyListed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      }
+    ],
+    "name": "PropertyUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "tenant",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "lateFee",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "monthNumber",
+        "type": "uint32"
+      }
+    ],
+    "name": "RentPaid",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "Unpaused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "verifier",
+        "type": "address"
+      }
+    ],
+    "name": "VerifierUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Withdrawal",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "DEFAULT_PERIOD",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "DEPOSIT_CLAIM_WINDOW",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "GRACE_PERIOD",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_LATE_FEE_BPS",
+    "outputs": [
+      {
+        "internalType": "uint16",
+        "name": "",
+        "type": "uint16"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_LEASE_MONTHS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_PLATFORM_FEE_BPS",
+    "outputs": [
+      {
+        "internalType": "uint16",
+        "name": "",
+        "type": "uint16"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_TEXT_LENGTH",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MONTH",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      }
+    ],
+    "name": "claimDeposit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      }
+    ],
+    "name": "completeLease",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllProperties",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "landlord",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "metadataURI",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "rentPerMonth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "securityDeposit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint16",
+            "name": "lateFeeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bool",
+            "name": "isAvailable",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isRented",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "activeLeaseId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct RentalManagement.Property[]",
+        "name": "list",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getAmountDue",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "rent",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "lateFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "total",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAvailableProperties",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "landlord",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "metadataURI",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "rentPerMonth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "securityDeposit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint16",
+            "name": "lateFeeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bool",
+            "name": "isAvailable",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isRented",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "activeLeaseId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct RentalManagement.Property[]",
+        "name": "list",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "landlord",
+        "type": "address"
+      }
+    ],
+    "name": "getLandlordProperties",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "landlord",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "metadataURI",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "rentPerMonth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "securityDeposit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint16",
+            "name": "lateFeeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bool",
+            "name": "isAvailable",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isRented",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "activeLeaseId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct RentalManagement.Property[]",
+        "name": "list",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getLease",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "propertyId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "landlord",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tenant",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "rentPerMonth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "securityDeposit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint16",
+            "name": "lateFeeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint64",
+            "name": "startDate",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "endDate",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "nextDueDate",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "durationMonths",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "monthsPaid",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "closedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "enum RentalManagement.LeaseStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "depositSettled",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct RentalManagement.Lease",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getLeasePayments",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "leaseId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "payer",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lateFee",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint32",
+            "name": "monthNumber",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "paidAt",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct RentalManagement.Payment[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "requestId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getMaintenanceRequest",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "propertyId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "leaseId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tenant",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "internalType": "enum RentalManagement.RequestStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint64",
+            "name": "createdAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "updatedAt",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct RentalManagement.MaintenanceRequest",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getProperty",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "landlord",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "metadataURI",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "rentPerMonth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "securityDeposit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint16",
+            "name": "lateFeeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bool",
+            "name": "isAvailable",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isRented",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "activeLeaseId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct RentalManagement.Property",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPropertyLeases",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "propertyId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "landlord",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tenant",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "rentPerMonth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "securityDeposit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint16",
+            "name": "lateFeeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint64",
+            "name": "startDate",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "endDate",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "nextDueDate",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "durationMonths",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "monthsPaid",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "closedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "enum RentalManagement.LeaseStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "depositSettled",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct RentalManagement.Lease[]",
+        "name": "list",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPropertyRequests",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "propertyId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "leaseId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "tenant",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "internalType": "enum RentalManagement.RequestStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint64",
+            "name": "createdAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "updatedAt",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct RentalManagement.MaintenanceRequest[]",
+        "name": "list",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tenant",
+        "type": "address"
+      }
+    ],
+    "name": "getTenantLeases",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "propertyId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "landlord",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "tenant",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "rentPerMonth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "securityDeposit",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint16",
+            "name": "lateFeeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint64",
+            "name": "startDate",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "endDate",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "nextDueDate",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32",
+            "name": "durationMonths",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "monthsPaid",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "closedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "enum RentalManagement.LeaseStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "depositSettled",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct RentalManagement.Lease[]",
+        "name": "list",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "identityOf",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      }
+    ],
+    "name": "isOverdue",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "a",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "b",
+        "type": "address"
+      }
+    ],
+    "name": "isSamePerson",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "isVerified",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "leaseCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "location",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "metadataURI",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "rentPerMonth",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "securityDeposit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint16",
+        "name": "lateFeeBps",
+        "type": "uint16"
+      }
+    ],
+    "name": "listProperty",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "paused",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      }
+    ],
+    "name": "payRent",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "pendingWithdrawals",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "platformFeeBps",
+    "outputs": [
+      {
+        "internalType": "uint16",
+        "name": "",
+        "type": "uint16"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "propertyCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      }
+    ],
+    "name": "raiseMaintenanceRequest",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "requestId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint32",
+        "name": "durationMonths",
+        "type": "uint32"
+      }
+    ],
+    "name": "rentProperty",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "requestCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "revokeIdentity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "available",
+        "type": "bool"
+      }
+    ],
+    "name": "setAvailability",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint16",
+        "name": "newFeeBps",
+        "type": "uint16"
+      }
+    ],
+    "name": "setPlatformFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newVerifier",
+        "type": "address"
+      }
+    ],
+    "name": "setVerifier",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deduction",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "settleDeposit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "leaseId",
+        "type": "uint256"
+      }
+    ],
+    "name": "terminateForNonPayment",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalEscrowedDeposits",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "unpause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "requestId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "enum RentalManagement.RequestStatus",
+        "name": "newStatus",
+        "type": "uint8"
+      }
+    ],
+    "name": "updateMaintenanceStatus",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "propertyId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "location",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "metadataURI",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "rentPerMonth",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "securityDeposit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint16",
+        "name": "lateFeeBps",
+        "type": "uint16"
+      }
+    ],
+    "name": "updateProperty",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verifiedAccounts",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verifier",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "identity",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expiry",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signature",
+        "type": "bytes"
+      }
+    ],
+    "name": "verifyIdentity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
