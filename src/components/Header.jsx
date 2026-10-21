@@ -1,9 +1,9 @@
-import { Building2, CircleCheck, Home, KeyRound, LayoutDashboard, Search } from "lucide-react";
+import { Activity, Building2, CircleCheck, Home, KeyRound, LayoutDashboard, Search } from "lucide-react";
 import { useWeb3 } from "../web3";
 import { addrLink, shortAddr } from "../utils";
 import AccountMenu from "./AccountMenu";
 
-const ICONS = { home: Home, browse: Search, tenant: KeyRound, landlord: Building2, admin: LayoutDashboard };
+const ICONS = { home: Home, browse: Search, tenant: KeyRound, landlord: Building2, activity: Activity, admin: LayoutDashboard };
 
 export default function Header({ tabs, tab, setTab }) {
   const { account, isVerified } = useWeb3();

@@ -1,5 +1,6 @@
 import { ArrowRight, Heart, Percent, Receipt } from "lucide-react";
 import { eth } from "../utils";
+import { Inr } from "../price";
 import PropertyImage from "./PropertyImage";
 import PlaceLink from "./PlaceLink";
 
@@ -28,6 +29,7 @@ export default function PropertyCard({ p, variant = "full", onOpen, saved, onTog
       <div className="pcard-body">
         <p className="price">
           <strong>{eth(p.rentPerMonth)} ETH</strong> <span>/ month</span>
+          <Inr wei={p.rentPerMonth} className="inr price-inr" />
         </p>
         <h3>
           <button className="title-btn" onClick={onOpen}>

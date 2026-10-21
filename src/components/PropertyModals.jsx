@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { useWeb3 } from "../web3";
 import { eth, shortAddr } from "../utils";
+import { Inr } from "../price";
 import { mapUrl, useMetadata } from "../media";
 import PropertyImage from "./PropertyImage";
 import PlaceLink from "./PlaceLink";
@@ -75,11 +76,17 @@ function PropertyDetails({ property: p, mine, onClose, onRent }) {
       <dl className="tiles">
         <div>
           <dt>Rent</dt>
-          <dd>{eth(p.rentPerMonth)} ETH / month</dd>
+          <dd>
+            {eth(p.rentPerMonth)} ETH / month
+            <Inr wei={p.rentPerMonth} />
+          </dd>
         </div>
         <div>
           <dt>Security deposit</dt>
-          <dd>{eth(p.securityDeposit)} ETH</dd>
+          <dd>
+            {eth(p.securityDeposit)} ETH
+            <Inr wei={p.securityDeposit} />
+          </dd>
         </div>
         <div>
           <dt>Late fee</dt>
@@ -138,7 +145,10 @@ function RentModal({ property: p, onClose }) {
           </tr>
           <tr className="total">
             <td>Pay now</td>
-            <td>{eth(total, 6)} ETH</td>
+            <td>
+              {eth(total, 6)} ETH
+              <Inr wei={total} />
+            </td>
           </tr>
         </tbody>
       </table>

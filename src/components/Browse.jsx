@@ -33,7 +33,7 @@ export default function FindHome() {
           <h2 aria-live="polite">
             {homes.length} {homes.length === 1 ? "home" : "homes"} found
           </h2>
-          <p className="muted small">Prices are per month, in ETH.</p>
+          <p className="muted small">Prices are per month, in ETH. ₹ amounts are estimates at today's ETH price.</p>
         </div>
       )}
       {data && data.length === 0 && (

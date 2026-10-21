@@ -14,6 +14,7 @@ import {
   structs,
   toWei,
 } from "../utils";
+import { Inr } from "../price";
 import PropertyImage from "./PropertyImage";
 import PlaceLink from "./PlaceLink";
 import PhotoPicker from "./PhotoPicker";
@@ -92,11 +93,17 @@ function LandlordProperty({ p, onEdit }) {
           <dl className="tiles tiles-plain">
             <div>
               <dt>Rent (per month)</dt>
-              <dd>{eth(p.rentPerMonth)} ETH</dd>
+              <dd>
+                {eth(p.rentPerMonth)} ETH
+                <Inr wei={p.rentPerMonth} />
+              </dd>
             </div>
             <div>
               <dt>Deposit</dt>
-              <dd>{eth(p.securityDeposit)} ETH</dd>
+              <dd>
+                {eth(p.securityDeposit)} ETH
+                <Inr wei={p.securityDeposit} />
+              </dd>
             </div>
             <div>
               <dt>Late fee</dt>
@@ -387,10 +394,12 @@ function PropertyForm({ property, onClose }) {
             <label className="field">
               <span>Rent per month (ETH)</span>
               <input inputMode="decimal" value={f.rent} placeholder="0.001" onChange={set("rent")} />
+              <Inr ethValue={f.rent} className="inr field-inr" />
             </label>
             <label className="field">
               <span>Security deposit (ETH)</span>
               <input inputMode="decimal" value={f.deposit} placeholder="0.002" onChange={set("deposit")} />
+              <Inr ethValue={f.deposit} className="inr field-inr" />
             </label>
           </div>
           <label className="field">

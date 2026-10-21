@@ -227,7 +227,7 @@ a {
   padding: 0.7rem 1.5rem;
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1.25rem;
 }
 .brand {
   display: flex;
@@ -288,6 +288,7 @@ a {
   font-weight: 700;
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .wallet-chip:hover {
   border-color: rgba(255, 255, 255, 0.45);
@@ -1801,5 +1802,334 @@ select:focus {
   }
   .pcard:hover {
     transform: none;
+  }
+}
+
+/* ───────── Rupee estimates ───────── */
+.inr {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.price .price-inr {
+  display: inline;
+  margin-left: 0.4rem;
+}
+.field-inr {
+  min-height: 1.1em;
+}
+.withdraw-bar .inr {
+  display: inline;
+  color: inherit;
+  font-size: 0.9em;
+}
+.summary td .inr {
+  font-weight: 600;
+}
+.stat .inr {
+  margin-top: 0.1rem;
+}
+
+/* ───────── Activity ───────── */
+.stats-3 {
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 1.5rem;
+}
+.stats-3 .stat:nth-last-child(-n + 3) {
+  border-bottom: 0;
+}
+.activity-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.chip {
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: var(--blue);
+}
+.chip.on {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--white);
+}
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+}
+.toggle input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  accent-color: var(--blue);
+}
+.feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.feed-item {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1.15rem;
+  border-bottom: 1px solid var(--line);
+}
+.feed-item:last-child {
+  border-bottom: 0;
+}
+.feed-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--soft);
+  color: var(--blue);
+}
+.tone-green .feed-icon {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.tone-amber .feed-icon {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+.tone-red .feed-icon {
+  background: var(--red-soft);
+  color: var(--red);
+}
+.tone-muted .feed-icon {
+  background: var(--bg);
+  color: var(--muted);
+}
+.feed-main {
+  flex: 1;
+  min-width: 0;
+}
+.feed-title {
+  font-weight: 600;
+  color: var(--navy);
+}
+.feed-meta {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.feed-meta a {
+  color: var(--muted);
+}
+.feed-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.feed-amount strong {
+  color: var(--navy);
+}
+.feed-link {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--blue);
+  border: 1px solid var(--soft);
+}
+.feed-link:hover {
+  background: var(--soft);
+}
+.feed-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+.feed-foot {
+  margin-top: 1rem;
+  text-align: center;
+}
+@media (max-width: 860px) {
+  .stats-3 {
+    grid-template-columns: 1fr;
+  }
+  .stats-3 .stat:nth-child(n) {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .stats-3 .stat:last-child {
+    border-bottom: 0;
+  }
+}
+@media (max-width: 600px) {
+  .feed-item {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 34px;
+    align-items: start;
+    column-gap: 0.75rem;
+    row-gap: 0.25rem;
+    padding: 0.85rem 1rem;
+  }
+  .feed-icon {
+    grid-row: 1 / span 2;
+  }
+  .feed-link {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .feed-amount {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: left;
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+}
+
+/* ───────── Admin multisig ───────── */
+.multisig {
+  margin-top: 1.25rem;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--green);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.15rem 1.35rem;
+}
+.multisig-head {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+}
+.multisig-head > div {
+  flex: 1;
+  display: grid;
+  gap: 0.2rem;
+}
+.multisig-head .stat-icon {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.multisig-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 0;
+}
+.multisig-list > div {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.8rem;
+}
+.multisig-list dt {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.multisig-list dd {
+  margin: 0;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.multisig-list dd a {
+  color: var(--navy);
+}
+.proposal {
+  border: 1px solid var(--soft);
+  background: var(--soft-2);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+}
+.proposal-head {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  color: var(--navy);
+}
+.proposal ol {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+  display: grid;
+  gap: 0.2rem;
+}
+.copy-field {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.4rem 0.4rem 0.8rem;
+  font-size: 0.82rem;
+}
+.copy-field > span {
+  color: var(--muted);
+  font-weight: 600;
+}
+.copy-field code {
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+  color: var(--navy);
+}
+.copy-field .round-btn {
+  margin: 0;
+}
+.transfer {
+  gap: 0.9rem;
+}
+.transfer h3 {
+  margin-bottom: 0.25rem;
+}
+.transfer .notice {
+  margin-top: 0;
+}
+@media (max-width: 600px) {
+  .multisig-head {
+    flex-wrap: wrap;
+  }
+  .copy-field {
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+  .copy-field > span {
+    grid-column: 1 / -1;
   }
 }

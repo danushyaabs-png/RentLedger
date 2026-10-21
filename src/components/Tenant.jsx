@@ -15,6 +15,7 @@ import {
   structs,
   txLink,
 } from "../utils";
+import { Inr } from "../price";
 import PropertyImage from "./PropertyImage";
 import PlaceLink from "./PlaceLink";
 import ConnectPrompt from "./ConnectPrompt";
@@ -114,11 +115,17 @@ function TenantLease({ l }) {
           <dl className="tiles">
             <div>
               <dt>Rent amount</dt>
-              <dd>{eth(l.rentPerMonth)} ETH / month</dd>
+              <dd>
+                {eth(l.rentPerMonth)} ETH / month
+                <Inr wei={l.rentPerMonth} />
+              </dd>
             </div>
             <div>
               <dt>Security deposit</dt>
-              <dd>{eth(l.securityDeposit)} ETH</dd>
+              <dd>
+                {eth(l.securityDeposit)} ETH
+                <Inr wei={l.securityDeposit} />
+              </dd>
             </div>
             <div>
               <dt>Late fee</dt>
