@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { formatEther } from "ethers";
-import { Eye, EyeOff, Pencil, Plus } from "lucide-react";
+import { Check, Eye, EyeOff, MessageSquare, Pencil, Plus, Sparkles, Star, X } from "lucide-react";
 import { useWeb3, useContractData } from "../web3";
 import {
   DEFAULT_PERIOD,
   LEASE_STATUS,
   REQUEST_STATUS,
+  RENTAL_STATUS,
   date,
   eth,
+  months,
   nowSec,
   shortAddr,
   addrLink,
@@ -21,6 +23,9 @@ import PhotoPicker from "./PhotoPicker";
 import { isMapsLink, loadMetadata, uploadImage, uploadListingDetails } from "../media";
 import Modal from "./Modal";
 import ConnectPrompt from "./ConnectPrompt";
+import { useChat } from "./Chat";
+import { demoFields } from "../demoListing";
+import { RateModal, RatingBadge } from "./Stars";
 
 export default function Landlord() {
   const { account, readContract, isVerified, openVerify } = useWeb3();
@@ -31,11 +36,20 @@ export default function Landlord() {
     const props = structs(await readContract.getLandlordProperties(account));
     return Promise.all(
       props.map(async (p) => {
-        const [leases, requests] = await Promise.all([
+        const [leases, requests, rentals] = await Promise.all([
           readContract.getPropertyLeases(p.id),
           readContract.getPropertyRequests(p.id),
+          readContract.getPropertyRentalRequests(p.id),
         ]);
-        return { ...p, leases: structs(leases).reverse(), requests: structs(requests).reverse() };
+        // Open rental requests, each with the tenant's rating from earlier leases
+        const open = structs(rentals).filter((q) => [1, 2].includes(Number(q.status)));
+        const rentalRequests = await Promise.all(
+          open.map(async (q) => {
+            const [sum, count] = await readContract.getRatingSummary(q.tenant);
+            return { ...q, tenantRating: { sum, count } };
+          })
+        );
+        return { ...p, leases: structs(leases).reverse(), requests: structs(requests).reverse(), rentalRequests };
       })
     );
   }, [account]);
@@ -80,6 +94,7 @@ function LandlordProperty({ p, onEdit }) {
   const { sendTx } = useWeb3();
   const status = p.isRented ? "Rented" : p.isAvailable ? "Listed" : "Hidden";
   const openRequests = p.requests.filter((r) => Number(r.status) !== 2).length;
+  const locked = p.approvedRequestId !== 0n;
 
   return (
     <article className="lcard">
@@ -117,7 +132,7 @@ function LandlordProperty({ p, onEdit }) {
         </div>
         <div className="lcard-status">
           <span className={`badge badge-${status.toLowerCase()}`}>{status}</span>
-          {!p.isRented && (
+          {!p.isRented && !locked && (
             <div className="lcard-tools">
               <button className="btn btn-outline btn-sm" onClick={onEdit}>
                 <Pencil size={14} /> Edit
@@ -134,6 +149,17 @@ function LandlordProperty({ p, onEdit }) {
           )}
         </div>
       </div>
+
+      {p.rentalRequests.length > 0 && (
+        <div className="sub">
+          <h4>
+            Rental requests <span className="badge badge-rented">{p.rentalRequests.length}</span>
+          </h4>
+          {p.rentalRequests.map((q) => (
+            <RentalRequestRow key={String(q.id)} q={q} p={p} />
+          ))}
+        </div>
+      )}
 
       {p.leases.length > 0 && (
         <div className="sub">
@@ -175,9 +201,53 @@ function LandlordProperty({ p, onEdit }) {
   );
 }
 
+function RentalRequestRow({ q, p }) {
+  const { sendTx } = useWeb3();
+  const { openChat } = useChat();
+  const status = Number(q.status);
+  const approved = status === 2;
+  return (
+    <div className="lease-row">
+      <div className="lease-info">
+        <p>
+          <a href={addrLink(q.tenant)} target="_blank" rel="noreferrer">
+            {shortAddr(q.tenant)}
+          </a>{" "}
+          wants to rent for {months(q.durationMonths)} ·{" "}
+          <span className={`status rstatus-${RENTAL_STATUS[status].toLowerCase()}`}>{RENTAL_STATUS[status]}</span>
+        </p>
+        <p className="muted small request-meta">
+          <RatingBadge summary={q.tenantRating} label="Tenant rating" /> · requested {date(q.createdAt)}
+          {approved && " · waiting for the tenant to pay"}
+        </p>
+      </div>
+      <div className="lease-actions">
+        <button className="btn btn-outline btn-sm" onClick={() => openChat({ propertyId: Number(p.id), tenant: q.tenant, title: p.name })}>
+          <MessageSquare size={14} /> Message
+        </button>
+        {status === 1 && (
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={p.isRented || p.approvedRequestId !== 0n}
+            title={p.approvedRequestId !== 0n ? "You've already approved another request" : undefined}
+            onClick={() => sendTx("Approve request", (c) => c.approveRentalRequest(q.id))}
+          >
+            <Check size={14} /> Approve
+          </button>
+        )}
+        <button className="btn btn-danger btn-sm" onClick={() => sendTx(approved ? "Withdraw approval" : "Decline request", (c) => c.rejectRentalRequest(q.id))}>
+          <X size={14} /> {approved ? "Withdraw approval" : "Decline"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LandlordLease({ l }) {
   const { sendTx } = useWeb3();
+  const { openChat } = useChat();
   const [settling, setSettling] = useState(false);
+  const [rating, setRating] = useState(false);
   const status = Number(l.status);
   const active = status === 1;
   const fullyPaid = l.monthsPaid >= l.durationMonths;
@@ -220,8 +290,22 @@ function LandlordLease({ l }) {
             Return deposit
           </button>
         )}
+        <button className="btn btn-outline btn-sm" onClick={() => openChat({ propertyId: Number(l.propertyId), tenant: l.tenant })}>
+          <MessageSquare size={14} /> Message
+        </button>
+        {!active && !l.landlordRated && (
+          <button className="btn btn-outline btn-sm" onClick={() => setRating(true)}>
+            <Star size={14} /> Rate tenant
+          </button>
+        )}
+        {!active && l.landlordRated && (
+          <span className="rated-note">
+            <Star size={14} /> Tenant rated
+          </span>
+        )}
       </div>
       {settling && <SettleDeposit l={l} onClose={() => setSettling(false)} />}
+      {rating && <RateModal leaseId={l.id} who="tenant" name={`Tenant ${shortAddr(l.tenant)}`} onClose={() => setRating(false)} />}
     </div>
   );
 }
@@ -290,6 +374,13 @@ function PropertyForm({ property, onClose }) {
   const [busy, setBusy] = useState("");
   const [uploadError, setUploadError] = useState("");
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  // Quick demo: random name, neighbourhood, Maps link and prices. Photos are added by hand.
+  function fillDemo() {
+    const d = demoFields();
+    setF({ name: d.name, location: d.location, rent: d.rent, deposit: d.deposit, lateFee: d.lateFee });
+    setMapLink(d.mapLink);
+  }
 
   // When editing, start from the listing's current photos and pin.
   useEffect(() => {
@@ -362,6 +453,14 @@ function PropertyForm({ property, onClose }) {
         </p>
       ) : (
         <form onSubmit={submit} className="form">
+          {!isEdit && (
+            <div className="demo-fill">
+              <button type="button" className="btn btn-outline btn-sm" onClick={fillDemo}>
+                <Sparkles size={15} /> Fill with demo data
+              </button>
+              <span className="muted small">For quick demos: a random home name, neighbourhood, Maps link and prices. Add the photos yourself.</span>
+            </div>
+          )}
           <label className="field">
             <span>Name</span>
             <input value={f.name} maxLength={100} placeholder="2BHK near Anna Nagar" onChange={set("name")} />

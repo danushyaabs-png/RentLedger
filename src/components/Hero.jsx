@@ -15,18 +15,17 @@ const POINTS = [
 ];
 
 export default function Home({ goFind, goList }) {
-  const { googleUser } = useWeb3();
   const { data: homes, loading, isMine } = useListings();
   const { isSaved, toggle } = useFavorites();
   const [viewing, setViewing] = useState(null);
   const featured = homes?.[0];
-  const firstName = (googleUser?.displayName || "").split(" ")[0];
+  const { displayName } = useWeb3();
 
   return (
     <>
       <section className="home-hero">
         <div className="home-hero-copy">
-          {firstName && <p className="hello">Welcome back, {firstName}</p>}
+          {displayName && <p className="hello">Welcome back, {displayName}</p>}
           <span className="eyebrow-pill">Blockchain powered rentals</span>
           <h1>
             Renting, <em>settled</em>

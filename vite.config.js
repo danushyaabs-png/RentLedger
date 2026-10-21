@@ -2,12 +2,17 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { createVerifyHandler } from "./server/verifyCore.js";
 import { createUploadHandler } from "./server/uploadCore.js";
+import { createChatHandler } from "./server/chatCore.js";
 import { verifyFirebaseIdToken } from "./server/firebaseToken.js";
 
 // During `npm run dev`, serve the same /api endpoints that Vercel runs in production.
 function devApi(env) {
   const opts = { verifyIdToken: verifyFirebaseIdToken, getEnv: () => env };
-  const routes = { "/api/verify": createVerifyHandler(opts), "/api/upload": createUploadHandler(opts) };
+  const routes = {
+    "/api/verify": createVerifyHandler(opts),
+    "/api/upload": createUploadHandler(opts),
+    "/api/chat": createChatHandler(opts),
+  };
   return {
     name: "rentledger-dev-api",
     configureServer(server) {

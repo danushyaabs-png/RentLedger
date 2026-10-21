@@ -2,7 +2,7 @@
 // The Firebase settings live in shared/firebaseConfig.js.
 
 import { initializeApp } from "firebase/app";
-import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, signOut, updateProfile } from "firebase/auth";
 import { firebaseConfig as config } from "../shared/firebaseConfig.js";
 
 export const googleReady = !!(config.apiKey && config.authDomain && config.projectId);
@@ -31,6 +31,12 @@ export function watchGoogleUser(callback) {
     return () => {};
   }
   return onAuthStateChanged(getFirebaseAuth(), callback);
+}
+
+/** Save the name the user chose on their Firebase account (so it follows them to other devices). */
+export async function saveDisplayName(name) {
+  const user = googleReady ? getFirebaseAuth().currentUser : null;
+  if (user) await updateProfile(user, { displayName: name });
 }
 
 export function getIdToken(user) {

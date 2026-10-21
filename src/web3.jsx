@@ -3,7 +3,7 @@ import { BrowserProvider, Contract, JsonRpcProvider, ZeroHash } from "ethers";
 import abi from "./abi.json";
 import { CHAIN_ID, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, EXPLORER, RPC_URL } from "./config";
 import { explainError, txLink } from "./utils";
-import { getIdToken, signOutGoogle, watchGoogleUser } from "./firebase";
+import { getIdToken, saveDisplayName, signOutGoogle, watchGoogleUser } from "./firebase";
 
 const Web3Context = createContext(null);
 
@@ -30,6 +30,32 @@ export function Web3Provider({ children }) {
 
   // Google sign-in state
   useEffect(() => watchGoogleUser(setGoogleUser), []);
+
+  // The name the user chose for themselves (asked once after Google sign-in)
+  const [userName, setUserName] = useState(null);
+  const nameKey = (uid) => `rentledger-name-${uid}`;
+  useEffect(() => {
+    if (!googleUser) return setUserName(null);
+    try {
+      setUserName(localStorage.getItem(nameKey(googleUser.uid)));
+    } catch {
+      setUserName(null);
+    }
+  }, [googleUser]);
+  const saveUserName = useCallback(
+    async (name) => {
+      const n = name.trim().replace(/\s+/g, " ");
+      await saveDisplayName(n).catch(() => {}); // still works on this device if Firebase is unreachable
+      try {
+        localStorage.setItem(nameKey(googleUser.uid), n);
+      } catch {
+        /* private mode: keep it for this session only */
+      }
+      setUserName(n);
+    },
+    [googleUser]
+  );
+  const displayName = userName || googleUser?.displayName || googleUser?.email?.split("@")[0] || "";
 
   // Ask the verifier which identity hash belongs to the signed-in Google account
   const loadGoogleIdentity = useCallback(async (user) => {
@@ -207,6 +233,10 @@ export function Web3Provider({ children }) {
       identityReady,
       isVerified: !!identity,
       googleUser,
+      userName,
+      displayName,
+      needsName: !!googleUser && !userName,
+      saveUserName,
       googleIdentity,
       retryGoogleIdentity: () => googleUser && loadGoogleIdentity(googleUser),
       signOutAll,
@@ -214,7 +244,7 @@ export function Web3Provider({ children }) {
       openVerify: () => setVerifyOpen(true),
       closeVerify: () => setVerifyOpen(false),
     }),
-    [account, chainId, hasWallet, onRightChain, connect, switchNetwork, sendTx, version, refresh, toasts, dismissToast, identity, identityReady, verifyOpen, googleUser, googleIdentity, loadGoogleIdentity, signOutAll]
+    [account, chainId, hasWallet, onRightChain, connect, switchNetwork, sendTx, version, refresh, toasts, dismissToast, identity, identityReady, verifyOpen, googleUser, userName, displayName, saveUserName, googleIdentity, loadGoogleIdentity, signOutAll]
   );
 
   return <Web3Context.Provider value={value}>{children}</Web3Context.Provider>;

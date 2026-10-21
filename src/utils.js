@@ -3,6 +3,8 @@ import { EXPLORER } from "./config";
 
 export const LEASE_STATUS = ["None", "Active", "Completed", "Terminated"];
 export const REQUEST_STATUS = ["Open", "In progress", "Resolved"];
+// Rental request status, same order as the contract enum
+export const RENTAL_STATUS = ["None", "Pending", "Approved", "Declined", "Cancelled", "Accepted"];
 
 export const DAY = 86400;
 export const MONTH = 30 * DAY;
@@ -67,7 +69,7 @@ const ERROR_MESSAGES = {
   InvalidAmount: "Rent must be more than 0.",
   InvalidDuration: "Lease length must be between 1 and 60 months.",
   InvalidFee: "That fee is above the allowed maximum.",
-  InvalidText: "A required field is empty or longer than 500 characters.",
+  InvalidText: "A required field is empty or too long.",
   IncorrectPayment: "The amount sent doesn't match what's due. Refresh and try again.",
   LeaseNotActive: "This lease is no longer active.",
   LeaseStillActive: "The lease has to be closed first.",
@@ -87,6 +89,13 @@ const ERROR_MESSAGES = {
   InvalidVerification: "The verification pass wasn't accepted. Please verify again.",
   VerificationExpired: "The verification pass expired. Please verify again.",
   IdentityAlreadySet: "This wallet is already linked to a different Google account.",
+  RentalRequestNotFound: "That rental request doesn't exist.",
+  InvalidRequestState: "This request has already been handled. Refresh to see its latest status.",
+  RequestAlreadyOpen: "You already have an open request for this home. Wait for the owner, or cancel it first.",
+  AnotherRequestApproved: "You've already approved another request for this home. Decline that one first.",
+  HasApprovedRequest: "You can't edit this home while an approved request is waiting for payment.",
+  InvalidRating: "Pick between 1 and 5 stars.",
+  AlreadyRated: "You've already rated this lease.",
 };
 
 export function explainError(e, iface) {
@@ -115,3 +124,6 @@ export function explainError(e, iface) {
   }
   return e.shortMessage || e.reason || e.message || "Something went wrong.";
 }
+
+/** "1 month" / "6 months" */
+export const months = (n) => `${Number(n)} month${Number(n) === 1 ? "" : "s"}`;

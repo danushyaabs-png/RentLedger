@@ -29,12 +29,16 @@ export default function Welcome() {
     identityReady,
     sendTx,
     signOutAll,
+    needsName,
+    saveUserName,
+    displayName,
   } = useWeb3();
+  const [nameInput, setNameInput] = useState(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
 
-  const step = !googleUser ? 1 : !account || !onRightChain ? 2 : 3;
-  const mismatch = step === 3 && identityReady && identity && googleIdentity.id && identity !== googleIdentity.id;
+  const step = !googleUser ? 1 : needsName ? 2 : !account || !onRightChain ? 3 : 4;
+  const mismatch = step === 4 && identityReady && identity && googleIdentity.id && identity !== googleIdentity.id;
 
   async function google() {
     setError("");
@@ -113,17 +117,21 @@ export default function Welcome() {
 
       <main className="welcome-main">
         <div className="welcome-card">
-          <h2>{step === 1 ? "Sign in to RentLedger" : step === 2 ? "Connect your wallet" : "Verify your wallet"}</h2>
+          <h2>
+            {step === 1 ? "Sign in to RentLedger" : step === 2 ? "What should we call you?" : step === 3 ? "Connect your wallet" : "Verify your wallet"}
+          </h2>
           <p className="muted">
             {step === 1
               ? "Use your Google account to get started."
               : step === 2
-                ? "Your wallet is how you pay rent and receive payments."
-                : "Link this wallet to your Google account. You only do this once per wallet."}
+                ? "We'll use this name to greet you. You can change it later from the account menu."
+                : step === 3
+                  ? "Your wallet is how you pay rent and receive payments."
+                  : "Link this wallet to your Google account. You only do this once per wallet."}
           </p>
 
           <ol className="progress" aria-label="Sign-in progress">
-            {["Google account", "Wallet", "Verify"].map((label, i) => (
+            {["Google", "Your name", "Wallet", "Verify"].map((label, i) => (
               <li key={label} className={i + 1 < step ? "done" : i + 1 === step ? "current" : ""}>
                 {label}
               </li>
@@ -132,9 +140,9 @@ export default function Welcome() {
 
           {googleUser && (
             <div className="signed-in-as">
-              <Avatar user={googleUser} />
+              <Avatar user={googleUser} name={displayName} />
               <div>
-                <strong>{googleUser.displayName || googleUser.email}</strong>
+                <strong>{displayName || googleUser.email}</strong>
                 <span className="muted small">{googleUser.email}</span>
               </div>
               <button className="link-btn small" onClick={signOutAll}>
@@ -149,7 +157,36 @@ export default function Welcome() {
             </button>
           )}
 
-          {step === 2 &&
+          {step === 2 && (
+            <form
+              className="form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const n = (nameInput ?? googleUser.displayName ?? "").trim();
+                if (n.length < 2) return setError("Please enter at least 2 characters.");
+                setError("");
+                setBusy("Saving…");
+                await saveUserName(n);
+                setBusy("");
+              }}
+            >
+              <label className="field">
+                <span>Your name</span>
+                <input
+                  autoFocus
+                  maxLength={40}
+                  value={nameInput ?? googleUser.displayName ?? ""}
+                  placeholder="e.g. Danush"
+                  onChange={(e) => setNameInput(e.target.value)}
+                />
+              </label>
+              <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={!!busy}>
+                Continue
+              </button>
+            </form>
+          )}
+
+          {step === 3 &&
             (!hasWallet ? (
               <>
                 <a className="btn btn-primary btn-lg btn-block" href="https://metamask.io/download/" target="_blank" rel="noreferrer">
@@ -167,7 +204,7 @@ export default function Welcome() {
               </button>
             ))}
 
-          {step === 3 && (
+          {step === 4 && (
             <>
               <div className="wallet-line">
                 <span className="dot" aria-hidden="true" />
@@ -224,9 +261,9 @@ export default function Welcome() {
   );
 }
 
-export function Avatar({ user, size = 36 }) {
+export function Avatar({ user, size = 36, name }) {
   const [broken, setBroken] = useState(false);
-  const letter = (user.displayName || user.email || "?").trim()[0].toUpperCase();
+  const letter = (name || user.displayName || user.email || "?").trim()[0].toUpperCase();
   return user.photoURL && !broken ? (
     <img
       className="avatar"

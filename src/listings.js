@@ -11,9 +11,15 @@ export function useListings() {
   const state = useContractData(async () => {
     const list = structs(await readContract.getAvailableProperties());
     const landlords = [...new Set(list.map((p) => p.landlord))];
-    const ids = await Promise.all(landlords.map((a) => readContract.identityOf(a)));
+    const [ids, ratings] = await Promise.all([
+      Promise.all(landlords.map((a) => readContract.identityOf(a))),
+      Promise.all(landlords.map((a) => readContract.getRatingSummary(a).catch(() => [0n, 0n]))),
+    ]);
     const idOf = Object.fromEntries(landlords.map((a, i) => [a, ids[i] === ZeroHash ? null : ids[i]]));
-    return list.map((p) => ({ ...p, landlordIdentity: idOf[p.landlord] })).sort((a, b) => Number(b.id - a.id));
+    const rateOf = Object.fromEntries(landlords.map((a, i) => [a, { sum: ratings[i][0], count: ratings[i][1] }]));
+    return list
+      .map((p) => ({ ...p, landlordIdentity: idOf[p.landlord], ownerRating: rateOf[p.landlord] }))
+      .sort((a, b) => Number(b.id - a.id));
   }, []);
   const isMine = useCallback(
     (p) => sameAddr(account, p.landlord) || (!!identity && identity === p.landlordIdentity),

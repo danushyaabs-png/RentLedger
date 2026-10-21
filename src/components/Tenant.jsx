@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Calendar, ChevronDown, FileText, KeyRound, Wallet } from "lucide-react";
+import { Calendar, ChevronDown, FileText, KeyRound, MessageSquare, Star, Wallet } from "lucide-react";
 import { useWeb3, useContractData } from "../web3";
 import {
   DEPOSIT_CLAIM_WINDOW,
   GRACE_PERIOD,
   LEASE_STATUS,
   REQUEST_STATUS,
+  RENTAL_STATUS,
   addrLink,
   date,
   eth,
   nowSec,
   shortAddr,
+  months,
   struct,
   structs,
   txLink,
@@ -20,6 +22,9 @@ import PropertyImage from "./PropertyImage";
 import PlaceLink from "./PlaceLink";
 import ConnectPrompt from "./ConnectPrompt";
 import { Fact } from "./PropertyCard";
+import { useChat } from "./Chat";
+import { RateModal } from "./Stars";
+import { PayModal } from "./PropertyModals";
 
 export default function Tenant({ goBrowse }) {
   const { account, readContract } = useWeb3();
@@ -45,6 +50,18 @@ export default function Tenant({ goBrowse }) {
       })
     );
   }, [account]);
+  const requests = useContractData(async () => {
+    if (!account) return [];
+    const list = structs(await readContract.getTenantRentalRequests(account)).reverse();
+    const ids = [...new Set(list.map((r) => String(r.propertyId)))];
+    const props = Object.fromEntries(
+      await Promise.all(ids.map(async (id) => [id, struct(await readContract.getProperty(id))]))
+    );
+    // Show open requests, plus the most recent closed ones that didn't become a lease
+    const open = list.filter((r) => [1, 2].includes(Number(r.status)));
+    const closed = list.filter((r) => [3, 4].includes(Number(r.status))).slice(0, 3);
+    return [...open, ...closed].map((r) => ({ ...r, property: props[String(r.propertyId)] }));
+  }, [account]);
 
   if (!account) return <ConnectPrompt what="see your rentals" />;
 
@@ -56,7 +73,18 @@ export default function Tenant({ goBrowse }) {
       </header>
       {loading && !data && <p className="muted">Loading your leases…</p>}
       {error && <p className="error-text">Couldn't load your leases. Refresh to try again.</p>}
-      {data && data.length === 0 && (
+      {requests.data?.length > 0 && (
+        <div className="requests-block">
+          <h2>Rental requests</h2>
+          <div className="stack">
+            {requests.data.map((r) => (
+              <TenantRequest key={String(r.id)} r={r} />
+            ))}
+          </div>
+        </div>
+      )}
+      {data && data.length > 0 && requests.data?.length > 0 && <h2 className="leases-title">Leases</h2>}
+      {data && data.length === 0 && !requests.data?.length && (
         <div className="empty">
           <p>You're not renting anything yet.</p>
           <button className="btn btn-primary" onClick={goBrowse}>
@@ -73,8 +101,61 @@ export default function Tenant({ goBrowse }) {
   );
 }
 
+function TenantRequest({ r }) {
+  const { sendTx, account } = useWeb3();
+  const { openChat } = useChat();
+  const [paying, setPaying] = useState(false);
+  const p = r.property;
+  const status = Number(r.status);
+  const label = RENTAL_STATUS[status];
+  return (
+    <article className="lcard request-card">
+      <div className="request-row">
+        <div className="thumb thumb-sm">
+          <PropertyImage src={p.metadataURI} name={p.name} />
+        </div>
+        <div className="grow">
+          <h3>{p.name}</h3>
+          <p className="muted small">
+            {months(r.durationMonths)} · requested {date(r.createdAt)} · pay {eth(p.securityDeposit + p.rentPerMonth, 6)} ETH
+            after approval
+          </p>
+          <p className="small request-hint">
+            {status === 1 && "Waiting for the owner to approve."}
+            {status === 2 && "Approved! Pay the deposit and first month to start the lease."}
+            {status === 3 && "The owner declined this request."}
+            {status === 4 && "You cancelled this request."}
+          </p>
+        </div>
+        <span className={`status rstatus-${label.toLowerCase()}`}>{label}</span>
+      </div>
+      <div className="lcard-actions">
+        <button
+          className="btn btn-outline btn-sm"
+          onClick={() => openChat({ propertyId: Number(r.propertyId), tenant: account, title: p.name })}
+        >
+          <MessageSquare size={14} /> Message owner
+        </button>
+        {[1, 2].includes(status) && (
+          <button className="btn btn-danger btn-sm" onClick={() => sendTx("Cancel request", (c) => c.cancelRentalRequest(r.id))}>
+            Cancel request
+          </button>
+        )}
+        {status === 2 && (
+          <button className="btn btn-primary btn-sm" onClick={() => setPaying(true)}>
+            Pay {eth(p.securityDeposit + p.rentPerMonth, 6)} ETH and rent
+          </button>
+        )}
+      </div>
+      {paying && <PayModal property={p} request={r} onClose={() => setPaying(false)} />}
+    </article>
+  );
+}
+
 function TenantLease({ l }) {
-  const { sendTx, readContract } = useWeb3();
+  const { sendTx, readContract, account } = useWeb3();
+  const { openChat } = useChat();
+  const [rating, setRating] = useState(false);
   const [request, setRequest] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const p = l.property;
@@ -206,6 +287,21 @@ function TenantLease({ l }) {
             Close lease
           </button>
         )}
+        <button
+          className="btn btn-outline btn-sm"
+          onClick={() => openChat({ propertyId: Number(l.propertyId), tenant: account, title: p.name })}
+        >
+          <MessageSquare size={14} /> Message owner
+        </button>
+        {l.tenantRated ? (
+          <span className="rated-note">
+            <Star size={14} /> You rated the owner
+          </span>
+        ) : (
+          <button className="btn btn-outline btn-sm" onClick={() => setRating(true)}>
+            <Star size={14} /> Rate owner
+          </button>
+        )}
         {!active && !l.depositSettled && now >= claimOpensAt && (
           <button className="btn btn-primary btn-sm" onClick={() => sendTx("Claim deposit", (c) => c.claimDeposit(l.id))}>
             Claim {eth(l.securityDeposit, 6)} ETH deposit
@@ -213,6 +309,7 @@ function TenantLease({ l }) {
         )}
       </div>
 
+      {rating && <RateModal leaseId={l.id} who="owner" name={p.name} onClose={() => setRating(false)} />}
       {showHistory && (
         <div className="lcard-more">
           {(active || l.requests.length > 0) && (

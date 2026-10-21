@@ -12,14 +12,18 @@ import {
   Pencil,
   Receipt,
   RefreshCw,
+  Send,
   Settings,
+  Star,
+  ThumbsDown,
+  ThumbsUp,
   ShieldCheck,
   Wallet,
   Wrench,
 } from "lucide-react";
 import { useWeb3, useContractData } from "../web3";
 import { DEPLOY_BLOCK } from "../config";
-import { addrLink, eth, sameAddr, shortAddr, structs, txLink, REQUEST_STATUS } from "../utils";
+import { addrLink, eth, sameAddr, shortAddr, structs, txLink, REQUEST_STATUS, RENTAL_STATUS } from "../utils";
 import { Inr } from "../price";
 
 const CHUNK = 10_000; // blocks per log query (public RPCs limit the range)
@@ -31,7 +35,7 @@ const FILTERS = [
   { id: "leases", label: "Leases" },
   { id: "listings", label: "Listings" },
   { id: "maintenance", label: "Maintenance" },
-  { id: "accounts", label: "Accounts" },
+  { id: "accounts", label: "Accounts & ratings" },
 ];
 
 /** Read every event the contract has emitted, splitting the block range if the RPC refuses a big one. */
@@ -242,6 +246,7 @@ function buildFeed(logs, props) {
   const propById = new Map(props.map((p) => [String(p.id), p]));
   const lease = new Map(); // leaseId -> { propertyId, tenant, months }
   const requestProp = new Map(); // requestId -> propertyId
+  const rentalReq = new Map(); // rental request id -> { propertyId, tenant }
   const sorted = [...logs].sort((a, b) => a.blockNumber - b.blockNumber || a.index - b.index);
   for (const l of sorted) {
     if (l.fragment.name === "LeaseCreated") {
@@ -249,6 +254,7 @@ function buildFeed(logs, props) {
       lease.set(String(leaseId), { propertyId: String(propertyId), tenant, months: Number(months) });
     }
     if (l.fragment.name === "MaintenanceRequested") requestProp.set(String(l.args[0]), String(l.args[1]));
+    if (l.fragment.name === "RentalRequested") rentalReq.set(String(l.args[0]), { propertyId: String(l.args[1]), tenant: l.args[2] });
   }
   const name = (pid) => propById.get(String(pid))?.name || `Property #${pid}`;
   const landlordOf = (pid) => propById.get(String(pid))?.landlord;
@@ -308,6 +314,26 @@ function buildFeed(logs, props) {
           title: () => `Maintenance request #${a[0]}${pid ? ` at ${name(pid)}` : ""} marked ${REQUEST_STATUS[Number(a[1])] || "updated"}` };
         break;
       }
+      case "RentalRequested":
+        row = { group: "leases", icon: Send, tone: "blue", actor: a[2], parties: [a[2], landlordOf(a[1])],
+          title: (me) => `${who(a[2], me)} asked to rent ${name(a[1])} for ${Number(a[3])} month${Number(a[3]) === 1 ? "" : "s"}` };
+        break;
+      case "RentalRequestUpdated": {
+        const st = Number(a[2]);
+        if (st === 5) break; // "Accepted" is shown by the LeaseCreated row
+        const rq = rentalReq.get(String(a[0]));
+        const words = { 2: "approved", 3: "declined", 4: "cancelled" };
+        row = { group: "leases", icon: st === 2 ? ThumbsUp : ThumbsDown, tone: st === 2 ? "green" : "muted",
+          actor: st === 4 ? rq?.tenant : landlordOf(a[1]), parties: [rq?.tenant, landlordOf(a[1])],
+          title: (me) => st === 4
+            ? `${rq ? who(rq.tenant, me) : "A tenant"} cancelled the request for ${name(a[1])}`
+            : `Owner ${words[st] || RENTAL_STATUS[st]} ${rq ? `${sameAddr(rq.tenant, me) ? "your" : `${shortAddr(rq.tenant)}'s`}` : "a"} request for ${name(a[1])}` };
+        break;
+      }
+      case "RatingGiven":
+        row = { group: "accounts", icon: Star, tone: Number(a[3]) >= 4 ? "green" : Number(a[3]) >= 3 ? "amber" : "red", actor: a[1], parties: [a[1], a[2]],
+          title: (me) => `${who(a[1], me)} rated ${sameAddr(a[2], me) ? "you" : shortAddr(a[2])} as ${a[4] ? "owner" : "tenant"} ${"★".repeat(Number(a[3]))}${"☆".repeat(5 - Number(a[3]))}` };
+        break;
       case "Withdrawal":
         row = { group: "payments", icon: Wallet, tone: "blue", actor: a[0], parties: [a[0]], amount: a[1],
           title: (me) => `${who(a[0], me)} withdrew to ${sameAddr(a[0], me) ? "your" : "their"} wallet` };

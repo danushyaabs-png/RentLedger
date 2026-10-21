@@ -1,12 +1,14 @@
-import { Activity, Building2, CircleCheck, Home, KeyRound, LayoutDashboard, Search } from "lucide-react";
+import { Activity, Building2, CircleCheck, Home, KeyRound, LayoutDashboard, MessageSquare, Search } from "lucide-react";
+import { useChat } from "./Chat";
 import { useWeb3 } from "../web3";
 import { addrLink, shortAddr } from "../utils";
 import AccountMenu from "./AccountMenu";
 
-const ICONS = { home: Home, browse: Search, tenant: KeyRound, landlord: Building2, activity: Activity, admin: LayoutDashboard };
+const ICONS = { home: Home, browse: Search, tenant: KeyRound, landlord: Building2, messages: MessageSquare, activity: Activity, admin: LayoutDashboard };
 
 export default function Header({ tabs, tab, setTab }) {
   const { account, isVerified } = useWeb3();
+  const unread = useChat()?.unread || 0;
 
   return (
     <header className="header">
@@ -27,6 +29,7 @@ export default function Header({ tabs, tab, setTab }) {
               >
                 {Icon && <Icon size={17} aria-hidden="true" />}
                 {t.label}
+                {t.id === "messages" && unread > 0 && <span className="tab-badge" aria-label={`${unread} unread`}>{unread}</span>}
               </button>
             );
           })}

@@ -1,6 +1,7 @@
 import { ArrowRight, Heart, Percent, Receipt } from "lucide-react";
 import { eth } from "../utils";
 import { Inr } from "../price";
+import { RatingBadge } from "./Stars";
 import PropertyImage from "./PropertyImage";
 import PlaceLink from "./PlaceLink";
 
@@ -37,6 +38,11 @@ export default function PropertyCard({ p, variant = "full", onOpen, saved, onTog
           </button>
         </h3>
         <PlaceLink location={p.location} uri={p.metadataURI} />
+        {p.ownerRating && (
+          <div className="pcard-rating">
+            <RatingBadge summary={p.ownerRating} label="Owner" />
+          </div>
+        )}
         <div className="pcard-facts">
           <Fact icon={<Receipt size={16} />} label="Deposit" value={`${eth(p.securityDeposit)} ETH`} />
           <Fact icon={<Percent size={16} />} label="Late fee" value={`${Number(p.lateFeeBps) / 100}%`} />

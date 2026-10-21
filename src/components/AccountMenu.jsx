@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, Pencil } from "lucide-react";
 import { useWeb3 } from "../web3";
 import { addrLink, shortAddr } from "../utils";
 import { Avatar } from "./Welcome";
+import Modal from "./Modal";
 
 export default function AccountMenu() {
-  const { googleUser, account, isVerified, signOutAll } = useWeb3();
+  const { googleUser, account, isVerified, signOutAll, displayName } = useWeb3();
   const [open, setOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -33,15 +35,26 @@ export default function AccountMenu() {
         aria-label={`Signed in as ${googleUser.email}`}
         title={googleUser.email}
       >
-        <Avatar user={googleUser} size={36} />
+        <Avatar user={googleUser} size={36} name={displayName} />
         <ChevronDown size={16} aria-hidden="true" />
       </button>
       {open && (
         <div className="account-menu" role="menu">
           <div className="account-head">
-            <Avatar user={googleUser} size={44} />
+            <Avatar user={googleUser} size={44} name={displayName} />
             <div>
-              <strong>{googleUser.displayName || "Signed in"}</strong>
+              <span className="account-name">
+                <strong>{displayName || "Signed in"}</strong>
+                <button
+                  className="link-btn with-icon"
+                  onClick={() => {
+                    setOpen(false);
+                    setRenaming(true);
+                  }}
+                >
+                  <Pencil size={12} /> Change
+                </button>
+              </span>
               <span>{googleUser.email}</span>
             </div>
           </div>
@@ -62,6 +75,36 @@ export default function AccountMenu() {
           </button>
         </div>
       )}
+      {renaming && <RenameModal onClose={() => setRenaming(false)} />}
     </div>
+  );
+}
+
+function RenameModal({ onClose }) {
+  const { displayName, saveUserName } = useWeb3();
+  const [name, setName] = useState(displayName);
+  const [busy, setBusy] = useState(false);
+  const valid = name.trim().length >= 2;
+  return (
+    <Modal title="Change your name" onClose={onClose}>
+      <form
+        className="form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (!valid) return;
+          setBusy(true);
+          await saveUserName(name);
+          onClose();
+        }}
+      >
+        <label className="field">
+          <span>Your name</span>
+          <input autoFocus maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <button className="btn btn-primary btn-block" type="submit" disabled={!valid || busy}>
+          Save
+        </button>
+      </form>
+    </Modal>
   );
 }

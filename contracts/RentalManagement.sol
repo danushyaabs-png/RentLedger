@@ -14,6 +14,10 @@ pragma solidity ^0.8.24;
  *         trusted verifier) before listing or renting. Every wallet linked to the same
  *         identity counts as the same person, so nobody can rent their own property
  *         from a second wallet.
+ *         v3: tenants first send a rental request; the landlord approves it, and only then
+ *         can the tenant pay deposit + first month. After renting, tenant and landlord can
+ *         rate each other once per lease (tenant any time after moving in, landlord once the
+ *         lease has closed), so every rating comes from a real lease.
  * @dev    All amounts are in wei. 1 "month" = 30 days.
  */
 
@@ -36,6 +40,7 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
     uint16 public constant MAX_LATE_FEE_BPS = 2000;           // 20% max late fee
     uint16 public constant MAX_PLATFORM_FEE_BPS = 500;        // 5% max platform fee
     uint256 public constant MAX_TEXT_LENGTH = 500;            // bytes, prevents storage spam
+    uint256 public constant MAX_COMMENT_LENGTH = 280;         // rating comment
 
     // ─────────────────────────────────────────────────────────────
     //                            TYPES
@@ -43,6 +48,7 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
 
     enum LeaseStatus { None, Active, Completed, Terminated }
     enum RequestStatus { Open, InProgress, Resolved }
+    enum RentalRequestStatus { None, Pending, Approved, Rejected, Cancelled, Accepted }
 
     struct Property {
         uint256 id;
@@ -57,6 +63,7 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
         bool isRented;
         uint256 activeLeaseId;
         uint256 createdAt;
+        uint256 approvedRequestId; // approved rental request waiting for payment (0 = none)
     }
 
     struct Lease {
@@ -75,6 +82,30 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
         uint64 closedAt;
         LeaseStatus status;
         bool depositSettled;
+        bool tenantRated;        // tenant has rated the landlord for this lease
+        bool landlordRated;      // landlord has rated the tenant for this lease
+    }
+
+    struct RentalRequest {
+        uint256 id;
+        uint256 propertyId;
+        address tenant;
+        bytes32 tenantIdentity;
+        uint32 durationMonths;
+        RentalRequestStatus status;
+        uint64 createdAt;
+        uint64 updatedAt;
+        uint256 leaseId;         // set once the tenant pays and the lease starts
+    }
+
+    struct Rating {
+        uint256 leaseId;
+        address from;
+        address to;
+        uint8 stars;             // 1 to 5
+        bool byTenant;           // true: tenant rated landlord, false: landlord rated tenant
+        uint64 createdAt;
+        string comment;
     }
 
     struct Payment {
@@ -125,6 +156,19 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
     mapping(address => bytes32) public identityOf;
     uint256 public verifiedAccounts;
 
+    // Rental requests
+    uint256 public rentalRequestCount;
+    mapping(uint256 => RentalRequest) private rentalRequests;
+    mapping(uint256 => uint256[]) private propertyRentalRequestIds;
+    mapping(address => uint256[]) private tenantRentalRequestIds;
+    mapping(bytes32 => mapping(uint256 => uint256)) public openRequestOf; // identity => propertyId => open request id
+
+    // Ratings, grouped by person (identity) so every wallet of a person shares one reputation
+    Rating[] private ratings;
+    mapping(bytes32 => uint256[]) private ratingIdsOf;
+    mapping(bytes32 => uint256) private ratingSum;
+    mapping(bytes32 => uint256) private ratingCount;
+
     // ─────────────────────────────────────────────────────────────
     //                            EVENTS
     // ─────────────────────────────────────────────────────────────
@@ -143,6 +187,9 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
     event IdentityVerified(address indexed account, bytes32 indexed identity);
     event IdentityRevoked(address indexed account);
     event VerifierUpdated(address indexed verifier);
+    event RentalRequested(uint256 indexed requestId, uint256 indexed propertyId, address indexed tenant, uint32 durationMonths);
+    event RentalRequestUpdated(uint256 indexed requestId, uint256 indexed propertyId, RentalRequestStatus status);
+    event RatingGiven(uint256 indexed leaseId, address indexed from, address indexed to, uint8 stars, bool byTenant);
 
     // ─────────────────────────────────────────────────────────────
     //                         CUSTOM ERRORS
@@ -179,6 +226,13 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
     error VerificationExpired();
     error IdentityAlreadySet();
     error InvalidAddress();
+    error RentalRequestNotFound();
+    error InvalidRequestState();
+    error RequestAlreadyOpen();
+    error AnotherRequestApproved();
+    error HasApprovedRequest();
+    error InvalidRating();
+    error AlreadyRated();
 
     // ─────────────────────────────────────────────────────────────
     //                          MODIFIERS
@@ -244,10 +298,6 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
         return idA != bytes32(0) && idA == identityOf[b];
     }
 
-    function isVerified(address account) external view returns (bool) {
-        return identityOf[account] != bytes32(0);
-    }
-
     // ─────────────────────────────────────────────────────────────
     //                     LANDLORD: PROPERTIES
     // ─────────────────────────────────────────────────────────────
@@ -295,6 +345,7 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
     ) external propertyExists(propertyId) onlyPropertyLandlord(propertyId) {
         Property storage p = properties[propertyId];
         if (p.isRented) revert PropertyCurrentlyRented();
+        if (p.approvedRequestId != 0) revert HasApprovedRequest(); // terms are fixed once approved
         _validateText(name, false);
         _validateText(location, false);
         _validateText(metadataURI, true);
@@ -324,25 +375,80 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
     //                       TENANT: RENTING
     // ─────────────────────────────────────────────────────────────
 
-    /// @notice Rent a property. Send exactly securityDeposit + rentPerMonth.
-    function rentProperty(uint256 propertyId, uint32 durationMonths)
+    /// @notice Ask the landlord to rent a property for `durationMonths`. No payment yet.
+    function requestRental(uint256 propertyId, uint32 durationMonths)
         external
-        payable
         whenNotPaused
-        nonReentrant
         onlyVerified
         propertyExists(propertyId)
-        returns (uint256 leaseId)
+        returns (uint256 requestId)
     {
         Property storage p = properties[propertyId];
         if (!p.isAvailable || p.isRented) revert PropertyNotAvailable();
         if (msg.sender == p.landlord) revert LandlordCannotRentOwnProperty();
         if (isSamePerson(msg.sender, p.landlord)) revert SamePerson();
         if (durationMonths == 0 || durationMonths > MAX_LEASE_MONTHS) revert InvalidDuration();
+        bytes32 me = identityOf[msg.sender];
+        if (openRequestOf[me][propertyId] != 0) revert RequestAlreadyOpen();
+
+        uint64 nowTs = uint64(block.timestamp);
+        requestId = ++rentalRequestCount;
+        rentalRequests[requestId] = RentalRequest(
+            requestId, propertyId, msg.sender, me, durationMonths, RentalRequestStatus.Pending, nowTs, nowTs, 0
+        );
+        openRequestOf[me][propertyId] = requestId;
+        propertyRentalRequestIds[propertyId].push(requestId);
+        tenantRentalRequestIds[msg.sender].push(requestId);
+        emit RentalRequested(requestId, propertyId, msg.sender, durationMonths);
+    }
+
+    /// @notice Landlord approves a pending request. Only one approved request per property at a time.
+    function approveRentalRequest(uint256 requestId) external {
+        RentalRequest storage r = _rentalRequest(requestId);
+        Property storage p = properties[r.propertyId];
+        if (p.landlord != msg.sender) revert NotLandlord();
+        if (r.status != RentalRequestStatus.Pending) revert InvalidRequestState();
+        if (p.isRented) revert PropertyCurrentlyRented();
+        if (p.approvedRequestId != 0) revert AnotherRequestApproved();
+        p.approvedRequestId = requestId;
+        _setRequestStatus(r, RentalRequestStatus.Approved);
+    }
+
+    /// @notice Landlord declines a request (also withdraws an approval the tenant hasn't paid for yet).
+    function rejectRentalRequest(uint256 requestId) external {
+        RentalRequest storage r = _rentalRequest(requestId);
+        if (properties[r.propertyId].landlord != msg.sender) revert NotLandlord();
+        _closeRequest(r, RentalRequestStatus.Rejected);
+    }
+
+    /// @notice Tenant withdraws their own request.
+    function cancelRentalRequest(uint256 requestId) external {
+        RentalRequest storage r = _rentalRequest(requestId);
+        if (r.tenant != msg.sender) revert NotTenant();
+        _closeRequest(r, RentalRequestStatus.Cancelled);
+    }
+
+    /// @notice Pay for an approved request: send exactly securityDeposit + rentPerMonth. Starts the lease.
+    function rentProperty(uint256 requestId)
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+        onlyVerified
+        returns (uint256 leaseId)
+    {
+        RentalRequest storage r = _rentalRequest(requestId);
+        if (r.tenant != msg.sender) revert NotTenant();
+        if (r.status != RentalRequestStatus.Approved) revert InvalidRequestState();
+        uint256 propertyId = r.propertyId;
+        Property storage p = properties[propertyId];
+        if (!p.isAvailable || p.isRented) revert PropertyNotAvailable();
+        if (isSamePerson(msg.sender, p.landlord)) revert SamePerson();
 
         uint256 expected = p.securityDeposit + p.rentPerMonth;
         if (msg.value != expected) revert IncorrectPayment(expected, msg.value);
 
+        uint32 durationMonths = r.durationMonths;
         uint64 nowTs = uint64(block.timestamp);
         leaseId = ++leaseCount;
         Lease storage l = leases[leaseId];
@@ -362,6 +468,8 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
 
         p.isRented = true;
         p.activeLeaseId = leaseId;
+        r.leaseId = leaseId;
+        _closeRequest(r, RentalRequestStatus.Accepted);
 
         tenantLeaseIds[msg.sender].push(leaseId);
         propertyLeaseIds[propertyId].push(leaseId);
@@ -444,6 +552,41 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
         if (l.depositSettled) revert DepositAlreadySettled();
         if (block.timestamp < uint256(l.closedAt) + DEPOSIT_CLAIM_WINDOW) revert ClaimWindowNotOver();
         _settleDeposit(l, 0, "Auto-refund: landlord did not settle in time");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //                           RATINGS
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * @notice Rate the other side of a lease, once per lease.
+     *         Tenant rates the landlord any time after moving in; the landlord rates the
+     *         tenant only after the lease has closed. Nobody else can rate.
+     */
+    function rateLease(uint256 leaseId, uint8 stars, string calldata comment) external leaseExists(leaseId) {
+        if (stars == 0 || stars > 5) revert InvalidRating();
+        if (bytes(comment).length > MAX_COMMENT_LENGTH) revert InvalidText();
+        Lease storage l = leases[leaseId];
+        address to;
+        bool byTenant = msg.sender == l.tenant;
+        if (byTenant) {
+            if (l.tenantRated) revert AlreadyRated();
+            l.tenantRated = true;
+            to = l.landlord;
+        } else if (msg.sender == l.landlord) {
+            if (l.status == LeaseStatus.Active) revert LeaseStillActive();
+            if (l.landlordRated) revert AlreadyRated();
+            l.landlordRated = true;
+            to = l.tenant;
+        } else {
+            revert NotLeaseParty();
+        }
+        bytes32 key = _personKey(to);
+        ratingIdsOf[key].push(ratings.length);
+        ratings.push(Rating(leaseId, msg.sender, to, stars, byTenant, uint64(block.timestamp), comment));
+        ratingSum[key] += stars;
+        ratingCount[key] += 1;
+        emit RatingGiven(leaseId, msg.sender, to, stars, byTenant);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -547,15 +690,6 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
         return properties[propertyId];
     }
 
-    function getLease(uint256 leaseId) external view leaseExists(leaseId) returns (Lease memory) {
-        return leases[leaseId];
-    }
-
-    function getMaintenanceRequest(uint256 requestId) external view returns (MaintenanceRequest memory) {
-        if (requestId == 0 || requestId > requestCount) revert RequestNotFound();
-        return requests[requestId];
-    }
-
     function getAllProperties() external view returns (Property[] memory list) {
         list = new Property[](propertyCount);
         for (uint256 i = 0; i < propertyCount; i++) {
@@ -603,11 +737,29 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
         for (uint256 i = 0; i < ids.length; i++) list[i] = requests[ids[i]];
     }
 
-    function isOverdue(uint256 leaseId) external view leaseExists(leaseId) returns (bool) {
-        Lease storage l = leases[leaseId];
-        return l.status == LeaseStatus.Active
-            && l.monthsPaid < l.durationMonths
-            && block.timestamp > l.nextDueDate;
+    function getPropertyRentalRequests(uint256 propertyId) external view returns (RentalRequest[] memory list) {
+        uint256[] storage ids = propertyRentalRequestIds[propertyId];
+        list = new RentalRequest[](ids.length);
+        for (uint256 i = 0; i < ids.length; i++) list[i] = rentalRequests[ids[i]];
+    }
+
+    function getTenantRentalRequests(address tenant) external view returns (RentalRequest[] memory list) {
+        uint256[] storage ids = tenantRentalRequestIds[tenant];
+        list = new RentalRequest[](ids.length);
+        for (uint256 i = 0; i < ids.length; i++) list[i] = rentalRequests[ids[i]];
+    }
+
+    /// @notice All ratings received by the person who owns `account` (across all their wallets).
+    function getRatingsOf(address account) external view returns (Rating[] memory list) {
+        uint256[] storage ids = ratingIdsOf[_personKey(account)];
+        list = new Rating[](ids.length);
+        for (uint256 i = 0; i < ids.length; i++) list[i] = ratings[ids[i]];
+    }
+
+    /// @notice Sum of stars and number of ratings for the person who owns `account`.
+    function getRatingSummary(address account) external view returns (uint256 sum, uint256 count) {
+        bytes32 key = _personKey(account);
+        return (ratingSum[key], ratingCount[key]);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -638,6 +790,32 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
         emit DepositSettled(l.id, refund, deduction, reason);
     }
 
+    function _rentalRequest(uint256 requestId) private view returns (RentalRequest storage) {
+        if (requestId == 0 || requestId > rentalRequestCount) revert RentalRequestNotFound();
+        return rentalRequests[requestId];
+    }
+
+    function _setRequestStatus(RentalRequest storage r, RentalRequestStatus status) private {
+        r.status = status;
+        r.updatedAt = uint64(block.timestamp);
+        emit RentalRequestUpdated(r.id, r.propertyId, status);
+    }
+
+    /// @dev Ends a Pending or Approved request with a final status.
+    function _closeRequest(RentalRequest storage r, RentalRequestStatus finalStatus) private {
+        if (r.status != RentalRequestStatus.Pending && r.status != RentalRequestStatus.Approved) revert InvalidRequestState();
+        Property storage p = properties[r.propertyId];
+        if (p.approvedRequestId == r.id) p.approvedRequestId = 0;
+        openRequestOf[r.tenantIdentity][r.propertyId] = 0;
+        _setRequestStatus(r, finalStatus);
+    }
+
+    /// @dev Ratings belong to a person (identity); unverified addresses fall back to the address itself.
+    function _personKey(address account) private view returns (bytes32) {
+        bytes32 id = identityOf[account];
+        return id != bytes32(0) ? id : bytes32(uint256(uint160(account)));
+    }
+
     function _validateText(string calldata text, bool allowEmpty) private pure {
         uint256 len = bytes(text).length;
         if ((!allowEmpty && len == 0) || len > MAX_TEXT_LENGTH) revert InvalidText();
@@ -646,4 +824,4 @@ contract RentalManagement is Ownable, ReentrancyGuard, Pausable {
     // No receive()/fallback(): plain ETH transfers are rejected so funds can't get stuck.
 }
 
-//address of contract : 0x3A0982182923c59F601e7980878d917Bd91c42c0
+// previous contract address (v2, before rental requests): 0x3A0982182923c59F601e7980878d917Bd91c42c0

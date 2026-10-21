@@ -1,36 +1,65 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
-import { useWeb3 } from "../web3";
-import { eth, shortAddr } from "../utils";
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock, ExternalLink, MessageSquare } from "lucide-react";
+import { useWeb3, useContractData } from "../web3";
+import { date, eth, months, shortAddr, structs } from "../utils";
 import { Inr } from "../price";
 import { mapUrl, useMetadata } from "../media";
 import PropertyImage from "./PropertyImage";
 import PlaceLink from "./PlaceLink";
 import IpfsImage from "./IpfsImage";
 import Modal from "./Modal";
+import { useChat } from "./Chat";
+import { RatingBadge, Stars } from "./Stars";
 
-/** Opens the details window, and the rent window from it. Render once per page. */
+/** Opens the details window, and the request / pay windows from it. Render once per page. */
 export function PropertyDialogs({ viewing, setViewing, isMine }) {
-  const [renting, setRenting] = useState(null);
+  const { account, readContract, isVerified, openVerify } = useWeb3();
+  const { openChat } = useChat();
+  const [requesting, setRequesting] = useState(null);
+  const [paying, setPaying] = useState(null); // { property, request }
+  const { data: myRequests } = useContractData(
+    async () => (account ? structs(await readContract.getTenantRentalRequests(account)) : []),
+    [account]
+  );
+
+  // Latest request I made for this property (an open one wins)
+  const requestFor = (p) => {
+    const mine = (myRequests || []).filter((r) => r.propertyId === p.id);
+    return mine.find((r) => [1, 2].includes(Number(r.status))) || mine[mine.length - 1] || null;
+  };
+  const message = (p) => {
+    setViewing(null);
+    openChat({ propertyId: Number(p.id), tenant: account, title: p.name });
+  };
+
   return (
     <>
       {viewing && (
         <PropertyDetails
           property={viewing}
           mine={isMine(viewing)}
+          request={requestFor(viewing)}
           onClose={() => setViewing(null)}
-          onRent={() => {
-            setRenting(viewing);
+          onRequest={() => {
+            if (!isVerified) return openVerify();
+            setRequesting(viewing);
             setViewing(null);
           }}
+          onPay={(request) => {
+            setPaying({ property: viewing, request });
+            setViewing(null);
+          }}
+          onMessage={() => message(viewing)}
         />
       )}
-      {renting && <RentModal property={renting} onClose={() => setRenting(null)} />}
+      {requesting && <RequestModal property={requesting} onClose={() => setRequesting(null)} />}
+      {paying && <PayModal property={paying.property} request={paying.request} onClose={() => setPaying(null)} />}
     </>
   );
 }
 
-function PropertyDetails({ property: p, mine, onClose, onRent }) {
+function PropertyDetails({ property: p, mine, request, onClose, onRequest, onPay, onMessage }) {
+  const { sendTx } = useWeb3();
   const meta = useMetadata(p.metadataURI);
   const [index, setIndex] = useState(0);
   const images = meta.images;
@@ -97,24 +126,158 @@ function PropertyDetails({ property: p, mine, onClose, onRent }) {
           <dd>{shortAddr(p.landlord)}</dd>
         </div>
       </dl>
+      <OwnerReviews landlord={p.landlord} />
+
       {mine ? (
         <p className="note">This is your listing.</p>
       ) : (
-        <button className="btn btn-primary btn-block btn-lg" onClick={onRent}>
-          Rent this home
-        </button>
+        <RequestActions request={request} onRequest={onRequest} onPay={onPay} onMessage={onMessage} sendTx={sendTx} />
       )}
     </Modal>
   );
 }
 
-function RentModal({ property: p, onClose }) {
+function RequestActions({ request, onRequest, onPay, onMessage, sendTx }) {
+  const status = request ? Number(request.status) : 0;
+  const cancel = () => sendTx("Cancel request", (c) => c.cancelRentalRequest(request.id));
+  return (
+    <div className="request-box">
+      {status === 1 && (
+        <p className="notice">
+          <Clock size={15} /> Request sent for {months(request.durationMonths)}. Waiting for the owner to approve it.
+        </p>
+      )}
+      {status === 2 && (
+        <p className="notice notice-ok">
+          <CheckCircle2 size={15} /> The owner approved your request. Pay the deposit and first month to move in.
+        </p>
+      )}
+      {status === 3 && <p className="notice notice-warn">The owner declined your last request. You can send a new one.</p>}
+      <div className="request-buttons">
+        {status === 2 ? (
+          <button className="btn btn-primary btn-lg grow" onClick={() => onPay(request)}>
+            Pay and start lease
+          </button>
+        ) : status === 1 ? (
+          <button className="btn btn-outline btn-lg grow" onClick={cancel}>
+            Cancel request
+          </button>
+        ) : (
+          <button className="btn btn-primary btn-lg grow" onClick={onRequest}>
+            Request to rent
+          </button>
+        )}
+        <button className="btn btn-outline btn-lg" onClick={onMessage}>
+          <MessageSquare size={17} /> Message owner
+        </button>
+      </div>
+      {status === 2 && (
+        <button className="link-btn small" onClick={cancel}>
+          Cancel this request instead
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Owner's rating and latest reviews, from real leases only. */
+function OwnerReviews({ landlord }) {
+  const { readContract } = useWeb3();
+  const { data } = useContractData(async () => {
+    const [summary, list] = await Promise.all([readContract.getRatingSummary(landlord), readContract.getRatingsOf(landlord)]);
+    return { summary: { sum: summary[0], count: summary[1] }, list: structs(list).filter((r) => r.byTenant).reverse() };
+  }, [landlord]);
+  if (!data) return null;
+  return (
+    <div className="reviews">
+      <div className="reviews-head">
+        <h4>Owner rating</h4>
+        <RatingBadge summary={data.summary} />
+      </div>
+      {data.list.length > 0 ? (
+        <ul>
+          {data.list.slice(0, 3).map((r, i) => (
+            <li key={i}>
+              <Stars value={Number(r.stars)} size={13} />
+              {r.comment ? <p>{r.comment}</p> : <p className="muted">No comment</p>}
+              <span className="muted small">
+                Tenant {shortAddr(r.from)} · {date(r.createdAt)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted small">No tenant has rated this owner yet. Ratings can only come from people who rented from them.</p>
+      )}
+    </div>
+  );
+}
+
+function RequestModal({ property: p, onClose }) {
   const { sendTx, account } = useWeb3();
+  const { send } = useChat();
   const [months, setMonths] = useState(6);
-  const total = p.securityDeposit + p.rentPerMonth;
+  const [note, setNote] = useState("");
   const valid = Number.isInteger(months) && months >= 1 && months <= 60;
 
-  async function rent() {
+  async function request() {
+    const ok = await sendTx(`Request ${p.name}`, (c) => c.requestRental(p.id, months));
+    if (!ok) return;
+    if (note.trim()) {
+      try {
+        await send({ propertyId: Number(p.id), tenant: account }, note.trim());
+      } catch {
+        /* the request itself went through; chat can be retried from Messages */
+      }
+    }
+    onClose();
+  }
+
+  return (
+    <Modal title={`Request ${p.name}`} onClose={onClose}>
+      <p className="muted small">
+        Nothing is paid now. The owner reviews your request (and your rating as a tenant). Once they approve it, you
+        pay the deposit and first month from My rentals.
+      </p>
+      <label className="field">
+        <span>Lease length (months)</span>
+        <input type="number" min="1" max="60" value={months} onChange={(e) => setMonths(parseInt(e.target.value, 10) || 0)} />
+      </label>
+      <label className="field">
+        <span>
+          Message to the owner <small>(optional)</small>
+        </span>
+        <textarea
+          rows={3}
+          maxLength={1000}
+          value={note}
+          placeholder="Hi! I'm interested in your home. When can I visit?"
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </label>
+      <table className="summary">
+        <tbody>
+          <tr>
+            <td>Pay after approval</td>
+            <td>
+              {eth(p.securityDeposit + p.rentPerMonth, 6)} ETH
+              <Inr wei={p.securityDeposit + p.rentPerMonth} />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <button className="btn btn-primary btn-block btn-lg" disabled={!valid} onClick={request}>
+        Send request
+      </button>
+    </Modal>
+  );
+}
+
+export function PayModal({ property: p, request, onClose }) {
+  const { sendTx, account } = useWeb3();
+  const total = p.securityDeposit + p.rentPerMonth;
+
+  async function pay() {
     const ok = await sendTx(`Rent ${p.name}`, async (c) => {
       const balance = await c.runner.provider.getBalance(account);
       if (balance <= total) {
@@ -122,17 +285,16 @@ function RentModal({ property: p, onClose }) {
           `This account has ${eth(balance, 6)} ETH, but renting needs ${eth(total, 6)} ETH plus a small gas fee. Send more Sepolia ETH to it first.`
         );
       }
-      return c.rentProperty(p.id, months, { value: total });
+      return c.rentProperty(request.id, { value: total });
     });
     if (ok) onClose();
   }
 
   return (
     <Modal title={`Rent ${p.name}`} onClose={onClose}>
-      <label className="field">
-        <span>Lease length (months)</span>
-        <input type="number" min="1" max="60" value={months} onChange={(e) => setMonths(parseInt(e.target.value, 10) || 0)} />
-      </label>
+      <p className="notice notice-ok">
+        <CheckCircle2 size={15} /> Approved by the owner for {months(request.durationMonths)}.
+      </p>
       <table className="summary">
         <tbody>
           <tr>
@@ -156,7 +318,7 @@ function RentModal({ property: p, onClose }) {
         After this you'll pay {eth(p.rentPerMonth, 6)} ETH every 30 days from My rentals. Payments more than 5 days late
         add a {Number(p.lateFeeBps) / 100}% fee. A small network fee applies to each transaction.
       </p>
-      <button className="btn btn-primary btn-block btn-lg" disabled={!valid} onClick={rent}>
+      <button className="btn btn-primary btn-block btn-lg" onClick={pay}>
         Pay {eth(total, 6)} ETH and rent
       </button>
     </Modal>

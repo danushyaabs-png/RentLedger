@@ -7,6 +7,7 @@ import Landlord from "./components/Landlord";
 import Tenant from "./components/Tenant";
 import Admin from "./components/Admin";
 import Activity from "./components/Activity";
+import { ChatProvider, Messages } from "./components/Chat";
 import Toasts from "./components/Toasts";
 import Verify from "./components/Verify";
 import Welcome from "./components/Welcome";
@@ -20,15 +21,16 @@ const TABS = [
   { id: "browse", label: "Find a home" },
   { id: "tenant", label: "My rentals" },
   { id: "landlord", label: "My properties" },
+  { id: "messages", label: "Messages" },
   { id: "activity", label: "Activity" },
 ];
 
 export default function App() {
-  const { account, readContract, version, verifyOpen, googleUser, googleIdentity, onRightChain, identity, identityReady } =
+  const { account, readContract, version, verifyOpen, googleUser, googleIdentity, onRightChain, identity, identityReady, needsName } =
     useWeb3();
   const [tab, setTabState] = useState(() => {
     const h = location.hash.slice(1);
-    return ["home", "browse", "tenant", "landlord", "activity", "admin"].includes(h) ? h : "home";
+    return ["home", "browse", "tenant", "landlord", "messages", "activity", "admin"].includes(h) ? h : "home";
   });
   const setTab = (t) => {
     setTabState(t);
@@ -55,7 +57,7 @@ export default function App() {
 
   // Signed in with Google, wallet connected on Sepolia, and that wallet verified under this Google account.
   const ready =
-    !!googleUser && !!account && onRightChain && identityReady && !!identity && identity === googleIdentity.id;
+    !!googleUser && !needsName && !!account && onRightChain && identityReady && !!identity && identity === googleIdentity.id;
 
   if (googleUser === undefined) {
     return (
@@ -78,7 +80,7 @@ export default function App() {
   const tabs = isAdmin ? [...TABS, { id: "admin", label: "Admin" }] : TABS;
 
   return (
-    <>
+    <ChatProvider>
       <Header tabs={tabs} tab={tab} setTab={setTab} />
       {!CONTRACT_CONFIGURED && (
         <div className="paused-banner" role="status">
@@ -93,11 +95,12 @@ export default function App() {
       <main>
         {tab === "home" && <Home goFind={() => setTab("browse")} goList={() => setTab("landlord")} />}
         {tab === "browse" && <FindHome />}
-        {(tab === "tenant" || tab === "landlord" || tab === "activity" || tab === "admin") && (
+        {(tab === "tenant" || tab === "landlord" || tab === "messages" || tab === "activity" || tab === "admin") && (
           <div className="page">
             {(tab === "tenant" || tab === "landlord") && <WithdrawBar />}
             {tab === "tenant" && <Tenant goBrowse={() => setTab("browse")} />}
             {tab === "landlord" && <Landlord />}
+            {tab === "messages" && <Messages />}
             {tab === "activity" && <Activity />}
             {tab === "admin" && isAdmin && <Admin paused={paused} owner={owner} safe={safe} />}
           </div>
@@ -115,6 +118,6 @@ export default function App() {
       </footer>
       {verifyOpen && <Verify />}
       <Toasts />
-    </>
+    </ChatProvider>
   );
 }
